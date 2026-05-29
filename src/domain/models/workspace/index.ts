@@ -20,6 +20,8 @@ export interface ModuleMetric {
   tone?: ModuleTone;
 }
 
+export type WorkspaceNavigationGroup = "platform" | "module" | "admin" | "support";
+
 export interface WorkspaceNavigationItem {
   id: string;
   label: string;
@@ -28,7 +30,12 @@ export interface WorkspaceNavigationItem {
   icon?: LucideIcon;
   role?: string;
   moduleCode?: string;
-  group: "platform" | "module" | "admin";
+  group: WorkspaceNavigationGroup;
+  priority?: number;
+  disabled?: boolean;
+  statusLabel?: string;
+  blockedReason?: string;
+  source?: "platform" | "backend";
 }
 
 export interface ModulePageConfig {
