@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: ERP Platform API
+  version: 1.0.0
+servers:
+  - url: /api
+paths:
+  /v1/me/navigation:
+    get:
+      operationId: getNavigation
+      tags: [ModuleAccess]
+      responses:
+        "200":
+          description: Navigation for current tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseNavigation"
+  /v1/me/modules:
+    get:
+      operationId: getMeModules
+      tags: [ModuleAccess]
+      responses:
+        "200":
+          description: Enabled modules for current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMeModules"
+  /v1/platform/tenants:
+    get:
+      operationId: listTenants
+      tags: [Tenants]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/TenantStatus" }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated tenant list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTenantPage"
+    post:
+      operationId: createTenant
+      tags: [Tenants]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "200":
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTenant"
+  /v1/platform/tenants/{id}:
+    get:
+      operationId: getTenant
+      tags: [Tenants]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTenant"
+  /v1/super-admin/dashboard:
+    get:
+      operationId: getSuperAdminDashboard
+      tags: [SuperAdmin]
+      responses:
+        "200":
+          description: Platform dashboard snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponsePlatformDashboard"
+  /v1/public/plans:
+    get:
+      operationId: listPublicPlans
+      tags: [Plans]
+      responses:
+        "200":
+          description: Public plan catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponsePlanList"
+  /v1/expenses:
+    get:
+      operationId: listExpenses
+      tags: [Expenses]
+      responses:
+        "200":
+          description: Expense claims for tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseExpenseList"
+    post:
+      operationId: createExpense
+      tags: [Expenses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExpenseRequest"
+      responses:
+        "200":
+          description: Expense created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseExpense"
+components:
+  parameters:
+    TenantId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ApiResponseNavigation:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        message: { type: string, nullable: true }
+        data: { $ref: "#/components/schemas/NavigationResponse" }
+    NavigationResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/NavigationItem" }
+        setupProgressPercent: { type: integer }
+        minimumSetupComplete: { type: boolean }
+    NavigationItem:
+      type: object
+      properties:
+        code: { type: string }
+        label: { type: string }
+        path: { type: string }
+        icon: { type: string }
+        enabled: { type: boolean }
+    ApiResponseMeModules:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data: { $ref: "#/components/schemas/MeModulesResponse" }
+    MeModulesResponse:
+      type: object
+      properties:
+        modules:
+          type: array
+          items: { $ref: "#/components/schemas/ModuleView" }
+    ModuleView:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+    ApiResponseTenantPage:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data: { $ref: "#/components/schemas/PageResponseTenant" }
+    PageResponseTenant:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/Tenant" }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+    ApiResponseTenant:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        message: { type: string, nullable: true }
+        data: { $ref: "#/components/schemas/Tenant" }
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        legalName: { type: string }
+        displayName: { type: string }
+        slug: { type: string }
+        code: { type: string }
+        status: { $ref: "#/components/schemas/TenantStatus" }
+        primaryContactEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TenantStatus:
+      type: string
+      enum: [PENDING, ACTIVE, SUSPENDED, CANCELLED, ARCHIVED]
+    CreateTenantRequest:
+      type: object
+      required: [legalName, displayName, slug, type, countryCode, defaultCurrency, defaultTimezone, defaultLocale, primaryContactEmail, planCode]
+      properties:
+        legalName: { type: string }
+        displayName: { type: string }
+        slug: { type: string }
+        type: { type: string }
+        countryCode: { type: string }
+        defaultCurrency: { type: string }
+        defaultTimezone: { type: string }
+        defaultLocale: { type: string }
+        primaryContactEmail: { type: string, format: email }
+        planCode: { type: string }
+        idempotencyKey: { type: string }
+    ApiResponsePlatformDashboard:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data: { $ref: "#/components/schemas/PlatformDashboardSnapshot" }
+    PlatformDashboardSnapshot:
+      type: object
+      properties:
+        health: { $ref: "#/components/schemas/PlatformHealthSnapshot" }
+        tenants: { $ref: "#/components/schemas/TenantCountsSnapshot" }
+        subscriptions: { $ref: "#/components/schemas/SubscriptionCountsSnapshot" }
+        moduleAdoption:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+        recentActions:
+          type: array
+          items: { $ref: "#/components/schemas/RecentPlatformAction" }
+    PlatformHealthSnapshot:
+      type: object
+      properties:
+        status: { type: string }
+        message: { type: string }
+    TenantCountsSnapshot:
+      type: object
+      properties:
+        total: { type: integer, format: int64 }
+        active: { type: integer, format: int64 }
+        suspended: { type: integer, format: int64 }
+        pending: { type: integer, format: int64 }
+        cancelled: { type: integer, format: int64 }
+    SubscriptionCountsSnapshot:
+      type: object
+      properties:
+        active: { type: integer, format: int64 }
+        trialing: { type: integer, format: int64 }
+        pastDue: { type: integer, format: int64 }
+        expired: { type: integer, format: int64 }
+        cancelled: { type: integer, format: int64 }
+    RecentPlatformAction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        actionType: { type: string }
+        targetTenantId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    ApiResponsePlanList:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Plan" }
+    Plan:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        published: { type: boolean }
+    ApiResponseExpenseList:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Expense" }
+    ApiResponseExpense:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean }
+        data: { $ref: "#/components/schemas/Expense" }
+    Expense:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        currency: { type: string }
+        status: { type: string }
+        totalAmount: { type: number }
+        createdAt: { type: string, format: date-time }
+    CreateExpenseRequest:
+      type: object
+      required: [companyId, employeeId, title, currency, lineItems]
+      properties:
+        companyId: { type: string, format: uuid }
+        employeeId: { type: string, format: uuid }
+        title: { type: string }
+        currency: { type: string }
+        lineItems:
+          type: array
+          items: { $ref: "#/components/schemas/ExpenseLineItemRequest" }
+    ExpenseLineItemRequest:
+      type: object
+      required: [category, description, amount, expenseDate]
+      properties:
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        expenseDate: { type: string, format: date }

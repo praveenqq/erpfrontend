@@ -1,0 +1,11 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci",
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "@erp_api_base_url",
+    "NEXT_PUBLIC_KEYCLOAK_URL": "@erp_keycloak_url",
+    "NEXT_PUBLIC_KEYCLOAK_REALM": "@erp_keycloak_realm",
+    "NEXT_PUBLIC_KEYCLOAK_CLIENT_ID": "@erp_keycloak_client_id"
+  }
+}
