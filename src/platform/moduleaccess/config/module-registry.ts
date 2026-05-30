@@ -14,60 +14,73 @@ import type {
 } from "@/domain/models/workspace";
 
 /**
- * Static platform navigation + page metadata.
- * Server-driven items from /v1/me/navigation are merged at runtime.
+ * Shell-level navigation metadata. Runtime module entries from /v1/me/navigation
+ * remain the source of truth for enabled tenant modules and are merged in the
+ * navigation hook without hardcoding tenant entitlements in the frontend.
  */
 export const platformNavigationItems: WorkspaceNavigationItem[] = [
   {
     id: "home",
-    label: "Home",
+    label: "Dashboard",
     href: ROUTES.HOME,
-    description: "Workspace overview and setup progress",
+    description: "Workspace overview, setup progress, and action shortcuts",
     icon: LayoutDashboard,
     group: "platform",
-  },
-  {
-    id: "tenants",
-    label: "Tenants",
-    href: ROUTES.PLATFORM_TENANTS,
-    description: "Organization directory and lifecycle",
-    icon: Building2,
-    role: "TENANT_VIEW",
-    group: "platform",
+    priority: 1,
+    source: "platform",
   },
   {
     id: "super-admin",
     label: "Super Admin",
     href: ROUTES.SUPER_ADMIN_DASHBOARD,
-    description: "Cross-tenant platform operations",
+    description: "Cross-tenant health, provisioning, and platform actions",
     icon: Shield,
     role: "SUPER_ADMIN_ACCESS",
     group: "platform",
+    priority: 2,
+    source: "platform",
   },
   {
-    id: "expenses",
-    label: "Expenses",
-    href: ROUTES.MODULE_EXPENSES,
-    description: "Submit and approve expense claims",
-    icon: Receipt,
-    moduleCode: "EXPENSES",
-    group: "module",
+    id: "tenants",
+    label: "Tenants",
+    href: ROUTES.PLATFORM_TENANTS,
+    description: "Tenant directory, lifecycle status, and health context",
+    icon: Building2,
+    role: "TENANT_VIEW",
+    group: "platform",
+    priority: 3,
+    source: "platform",
   },
   {
     id: "subscription",
     label: "Subscription",
     href: ROUTES.PLATFORM_SUBSCRIPTION,
-    description: "Plan, billing, and entitlements",
+    description: "Current plan, billing state, limits, and entitlements",
     icon: CreditCard,
     group: "platform",
+    priority: 4,
+    source: "platform",
+  },
+  {
+    id: "expenses",
+    label: "Expenses",
+    href: ROUTES.MODULE_EXPENSES,
+    description: "Submit, review, and approve tenant expense claims",
+    icon: Receipt,
+    moduleCode: "EXPENSES",
+    group: "module",
+    priority: 40,
+    source: "platform",
   },
   {
     id: "setup",
     label: "Setup",
     href: ROUTES.ADMIN_SETUP,
-    description: "Guided tenant workspace provisioning",
+    description: "Required workspace setup steps before module rollout",
     icon: Settings,
     group: "admin",
+    priority: 70,
+    source: "platform",
   },
 ];
 
@@ -76,43 +89,50 @@ export const modulePageConfigs: Record<string, ModulePageConfig> = {
     eyebrow: "Workspace",
     title: "Dashboard",
     description:
-      "Welcome to your ERP workspace. Monitor setup progress and jump into platform or tenant modules.",
+      "Monitor the current workspace, review items needing attention, and move into the next operational action.",
     supportText:
-      "Use the left navigation to switch between platform and tenant-scoped modules.",
+      "The global shell keeps tenant, role, setup, and module context visible while backend-driven navigation matures.",
   },
   [ROUTES.PLATFORM_TENANTS]: {
     eyebrow: "Platform",
     title: "Tenants",
     description:
-      "Platform tenant directory and lifecycle management — search, provision, and monitor organizations.",
-    primaryAction: { label: "Create tenant", href: "#create-tenant", variant: "default" },
-    supportText: "New tenants inherit plan entitlements and module access from provisioning.",
+      "Search, provision, and monitor tenant organizations with clear status and subscription context.",
+    primaryAction: {
+      label: "Create tenant",
+      href: "#create-tenant",
+      variant: "default",
+    },
+    supportText:
+      "Tenant records should expose lifecycle status, subscription context, module access, and audit links.",
   },
   [ROUTES.SUPER_ADMIN_DASHBOARD]: {
     eyebrow: "Super Admin",
     title: "Platform dashboard",
     description:
-      "Cross-tenant health, subscriptions, and module adoption across the entire platform.",
-    supportText: "Metrics refresh from the super-admin dashboard API.",
+      "Review tenant health, subscriptions, provisioning failures, module adoption, and recent platform actions.",
+    supportText: "Dashboard cards should help administrators decide what needs attention today.",
   },
   [ROUTES.MODULE_EXPENSES]: {
     eyebrow: "Expenses module",
     title: "Expense claims",
     description:
-      "Review, submit, and approve expense reports for the current tenant.",
-    supportText: "Requires the EXPENSES module to be enabled for your tenant.",
+      "Review, submit, and approve expense reports for the current tenant with workflow status visible.",
+    supportText: "Requires the EXPENSES module to be enabled and permitted for the current tenant.",
   },
   [ROUTES.PLATFORM_SUBSCRIPTION]: {
     eyebrow: "Platform",
     title: "Subscription",
-    description: "Tenant subscription and plan management.",
-    supportText: "Connect plan upgrade flows via platform/subscriptions.",
+    description:
+      "Review the current plan, billing status, enabled modules, limits, and blocked capabilities.",
+    supportText: "Subscription status must remain visible because it controls tenant module access.",
   },
   [ROUTES.ADMIN_SETUP]: {
     eyebrow: "Admin",
     title: "Tenant setup",
-    description: "Guided workspace provisioning and onboarding steps.",
-    supportText: "Complete all required steps to unlock tenant modules.",
+    description:
+      "Complete required company, structure, and configuration steps before operational modules are unlocked.",
+    supportText: "Incomplete setup should guide users to the exact next step instead of leaving blank screens.",
   },
 };
 
