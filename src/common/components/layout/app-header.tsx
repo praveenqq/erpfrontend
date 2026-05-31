@@ -12,7 +12,8 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { useAuth } from "@/security/auth/auth-provider";
-import { useTenant } from "@/tenancy/context/tenant-context";
+import { useTenantDisplay } from "@/tenancy/hooks/use-tenant-display";
+import { GenexLogo } from "@/common/components/brand/genex-logo";
 
 function getPrimaryRole(roles: string[]) {
   if (roles.includes("SUPER_ADMIN_ACCESS")) return "Super Admin";
@@ -21,23 +22,17 @@ function getPrimaryRole(roles: string[]) {
   return "No role assigned";
 }
 
-function formatTenant(tenantId: string | null) {
-  if (!tenantId) return "No tenant selected";
-  if (tenantId.length <= 18) return tenantId;
-  return `${tenantId.slice(0, 8)}…${tenantId.slice(-6)}`;
-}
-
 export function AppHeader() {
   const { displayName, email, roles } = useAuth();
-  const { tenantId } = useTenant();
+  const { label: tenantLabel, subtitle: tenantSubtitle } = useTenantDisplay();
   const roleLabel = getPrimaryRole(roles);
 
   return (
     <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center border-b bg-background/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="lg:hidden">
-          <p className="text-sm font-semibold text-primary">ERP Platform</p>
-          <p className="text-xs text-muted-foreground">{roleLabel}</p>
+          <GenexLogo showWordmark size="sm" />
+          <p className="mt-0.5 text-xs text-muted-foreground">{roleLabel}</p>
         </div>
 
         <div className="hidden min-w-0 flex-1 max-w-xl items-center gap-2 rounded-xl border bg-card px-3 py-2 lg:flex">
@@ -67,7 +62,12 @@ export function AppHeader() {
           <ShieldCheck className="h-4 w-4 text-primary" />
           <div className="leading-tight">
             <p className="text-xs text-muted-foreground">Tenant context</p>
-            <p className="max-w-48 truncate text-sm font-medium">{formatTenant(tenantId)}</p>
+            <p className="max-w-48 truncate text-sm font-medium">{tenantLabel}</p>
+            {tenantSubtitle ? (
+              <p className="max-w-48 truncate text-xs text-muted-foreground">
+                {tenantSubtitle}
+              </p>
+            ) : null}
           </div>
         </div>
 

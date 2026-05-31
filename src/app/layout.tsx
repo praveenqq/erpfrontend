@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { GENEX_BRAND } from "@/common/brand/constants";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ERP Platform",
-  description: "Multi-tenant ERP platform frontend",
+  title: GENEX_BRAND.fullTitle,
+  description: GENEX_BRAND.description,
 };
 
 export default function RootLayout({
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
         <Providers>{children}</Providers>

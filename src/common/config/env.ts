@@ -8,8 +8,9 @@ function required(name: string, value: string | undefined): string {
 export type AuthMode = "keycloak" | "dev";
 
 export const env = {
+  /** Same-origin `/api` in dev (proxied by Next.js). Override for direct backend URL if needed. */
   apiBaseUrl:
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080",
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
   authMode: (process.env.NEXT_PUBLIC_AUTH_MODE ?? "keycloak") as AuthMode,
   keycloak: {
     url: process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? "http://localhost:8180",

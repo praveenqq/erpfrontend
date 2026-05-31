@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
+import { GENEX_BRAND } from "@/common/brand/constants";
 import { useAuth } from "@/security/auth/auth-provider";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -47,7 +48,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           <CardHeader>
             <CardTitle>Sign in required</CardTitle>
             <CardDescription>
-              Sign in with Keycloak to access the ERP platform.
+              Sign in with Keycloak to access {GENEX_BRAND.name}.
             </CardDescription>
           </CardHeader>
           <CardContent>

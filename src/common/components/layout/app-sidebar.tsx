@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, LogOut } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { ThemeToggle } from "@/common/components/layout/theme-toggle";
+import { GenexLogo } from "@/common/components/brand/genex-logo";
 import { cn } from "@/common/utils/cn";
 import { isRouteActive } from "@/common/navigation/routes";
 import { useAuth } from "@/security/auth/auth-provider";
@@ -38,10 +39,7 @@ export function AppSidebar() {
       <div className="sticky top-0 flex h-screen flex-col p-4">
         <div className="mb-4 shrink-0 rounded-2xl border bg-gradient-to-br from-primary to-teal-900 p-4 text-primary-foreground shadow-sm">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xl font-semibold tracking-tight">ERP Platform</p>
-              <p className="mt-1 text-xs text-primary-foreground/75">Decision-first SaaS workspace</p>
-            </div>
+            <GenexLogo size="md" variant="onPrimary" />
             <ThemeToggle />
           </div>
           <div className="mt-4 rounded-xl bg-white/10 p-3">
@@ -92,7 +90,7 @@ export function AppSidebar() {
               <LogOut className="h-4 w-4" />
               Sign out
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">End the current ERP session securely</div>
+            <div className="mt-1 text-xs text-muted-foreground">End the current GENEX session securely</div>
           </button>
         </div>
       </div>

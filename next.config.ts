@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+/** Browser uses same-origin `/api`; Next.js proxies to the Spring Boot backend. */
+const apiProxyTarget =
+  process.env.API_PROXY_TARGET ?? "http://localhost:8080/api";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -8,7 +10,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${apiBase}/:path*`,
+        destination: `${apiProxyTarget.replace(/\/$/, "")}/:path*`,
       },
     ];
   },
