@@ -12,7 +12,10 @@ import { useAuth } from "@/security/auth/auth-provider";
 
 interface TenantContextValue {
   tenantId: string | null;
+  companyId: string | null;
+  tenantSource: "manual" | "token" | "subdomain" | "development" | "none";
   setTenantId: (id: string | null) => void;
+  clearTenantOverride: () => void;
 }
 
 const TenantContext = createContext<TenantContextValue | null>(null);
@@ -27,38 +30,48 @@ function resolveTenantFromSubdomain(): string | null {
   return null;
 }
 
-function resolveTenantFromToken(
-  tokenParsed: Record<string, unknown> | undefined,
-): string | null {
-  const claimTenant =
-    (tokenParsed?.tenant_id as string | undefined) ??
-    (tokenParsed?.tenantId as string | undefined);
-  return claimTenant ?? resolveTenantFromSubdomain() ?? null;
-}
-
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { keycloak } = useAuth();
+  const { currentUser } = useAuth();
   const [manualTenantId, setManualTenantId] = useState<string | null | undefined>(
     undefined,
   );
 
-  const tenantId = useMemo(() => {
-    if (manualTenantId !== undefined) return manualTenantId;
-    const resolved = resolveTenantFromToken(
-      keycloak?.tokenParsed as Record<string, unknown> | undefined,
-    );
-    if (resolved) return resolved;
-    if (isDevAuth()) {
-      return process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "dev-tenant";
+  const tenantState = useMemo(() => {
+    if (manualTenantId !== undefined) {
+      return { tenantId: manualTenantId, tenantSource: "manual" as const };
     }
-    return null;
-  }, [manualTenantId, keycloak?.tokenParsed]);
+
+    if (currentUser.tenantId) {
+      return { tenantId: currentUser.tenantId, tenantSource: "token" as const };
+    }
+
+    const subdomainTenant = resolveTenantFromSubdomain();
+    if (subdomainTenant) {
+      return { tenantId: subdomainTenant, tenantSource: "subdomain" as const };
+    }
+
+    if (isDevAuth()) {
+      return {
+        tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "dev-tenant",
+        tenantSource: "development" as const,
+      };
+    }
+
+    return { tenantId: null, tenantSource: "none" as const };
+  }, [manualTenantId, currentUser.tenantId]);
 
   const setTenantId = (id: string | null) => setManualTenantId(id);
+  const clearTenantOverride = () => setManualTenantId(undefined);
 
   const value = useMemo(
-    () => ({ tenantId, setTenantId }),
-    [tenantId],
+    () => ({
+      tenantId: tenantState.tenantId,
+      companyId: currentUser.companyId,
+      tenantSource: tenantState.tenantSource,
+      setTenantId,
+      clearTenantOverride,
+    }),
+    [tenantState, currentUser.companyId],
   );
 
   return (
