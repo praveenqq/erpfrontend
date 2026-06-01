@@ -2,7 +2,7 @@
  * Central route constants — single source of truth for navigation and links.
  */
 export const ROUTES = {
-  HOME: "/",
+  HOME: "/home",
   UNAUTHORIZED: "/unauthorized",
   PLATFORM_TENANTS: "/platform/tenants",
   PLATFORM_TENANT_DETAIL: (id: string) => `/platform/tenants/${id}`,
