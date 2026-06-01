@@ -1,7 +1,9 @@
 "use client";
 
 import { isDevAuth } from "@/common/config/env";
+import { WORKSPACE_COPY } from "@/common/copy/workspace-labels";
 import { useTenant as useTenantQuery } from "@/platform/tenants/api/tenant-queries";
+import { useAuth } from "@/security/auth/auth-provider";
 import { useTenant } from "@/tenancy/context/tenant-context";
 
 const UUID_PATTERN =
@@ -21,16 +23,27 @@ function titleCaseSlug(slug: string): string {
 
 export function useTenantDisplay() {
   const { tenantId } = useTenant();
-  const devLabel = process.env.NEXT_PUBLIC_DEV_TENANT_NAME ?? "Dev Tenant";
+  const { isSuperAdmin } = useAuth();
+  const devLabel = process.env.NEXT_PUBLIC_DEV_TENANT_NAME ?? "Development organization";
   const shouldFetch = isUuid(tenantId);
   const { data: tenant } = useTenantQuery(shouldFetch ? tenantId : "");
 
   if (!tenantId) {
-    return { label: "No tenant selected", subtitle: null as string | null };
+    return {
+      label: isSuperAdmin ? WORKSPACE_COPY.operatorContextLabel : WORKSPACE_COPY.noWorkspaceSelected,
+      subtitle: null as string | null,
+    };
+  }
+
+  if (isSuperAdmin) {
+    return {
+      label: WORKSPACE_COPY.operatorContextLabel,
+      subtitle: tenant?.displayName ?? titleCaseSlug(tenantId),
+    };
   }
 
   if (isDevAuth() && tenantId === process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
-    return { label: devLabel, subtitle: "dev-tenant" };
+    return { label: devLabel, subtitle: "Development environment" };
   }
 
   if (tenant?.displayName) {
@@ -48,7 +61,7 @@ export function useTenantDisplay() {
   }
 
   return {
-    label: devLabel,
+    label: WORKSPACE_COPY.customerContextLabel,
     subtitle: null,
   };
 }

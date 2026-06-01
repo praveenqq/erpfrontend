@@ -4,35 +4,66 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, LogOut } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
 import { ThemeToggle } from "@/common/components/layout/theme-toggle";
 import { GenexLogo } from "@/common/components/brand/genex-logo";
 import { cn } from "@/common/utils/cn";
-import { isRouteActive } from "@/common/navigation/routes";
+import { ROUTES, isRouteActive } from "@/common/navigation/routes";
+import { WORKSPACE_COPY } from "@/common/copy/workspace-labels";
 import { useAuth } from "@/security/auth/auth-provider";
 import { useWorkspaceNavigation } from "@/platform/moduleaccess/hooks/use-workspace-navigation";
+import { isSubscriptionBlocked } from "@/platform/moduleaccess/config/navigation-blocked-reasons";
 import type { WorkspaceNavigationItem } from "@/domain/models/workspace";
 
-function canAccessItem(item: WorkspaceNavigationItem, roles: string[]): boolean {
-  return !item.role || roles.includes(item.role);
+function canAccessItem(
+  item: WorkspaceNavigationItem,
+  roles: string[],
+  hasAnyPermission: (permissions: string[]) => boolean,
+  hasPermission: (permission: string) => boolean,
+): boolean {
+  if (item.permissions?.length) {
+    return hasAnyPermission(item.permissions);
+  }
+  if (item.role) {
+    return roles.includes(item.role) || hasPermission(item.role);
+  }
+  return true;
 }
 
-function getRoleMode(roles: string[]) {
-  if (roles.includes("SUPER_ADMIN_ACCESS")) return "Super Admin Mode";
-  if (roles.some((role) => role.includes("ADMIN"))) return "Tenant Admin Mode";
-  return "Tenant User Mode";
+function getRoleMode(roles: string[], permissions: string[]) {
+  const access = new Set([...roles, ...permissions]);
+  if (
+    access.has("SUPER_ADMIN_ACCESS") ||
+    roles.includes("PLATFORM_SUPER_ADMIN")
+  ) {
+    return WORKSPACE_COPY.platformOperatorMode;
+  }
+  if (roles.some((role) => role.includes("ADMIN"))) return WORKSPACE_COPY.tenantAdminMode;
+  return WORKSPACE_COPY.tenantUserMode;
 }
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { items, isLoading, isError, setupProgress, minimumSetupComplete } =
-    useWorkspaceNavigation();
-  const { logout, roles } = useAuth();
+  const {
+    items,
+    blockedModuleItems,
+    isLoading,
+    isError,
+    setupProgress,
+    minimumSetupComplete,
+  } = useWorkspaceNavigation();
+  const { logout, roles, permissions, hasAnyPermission, hasPermission, isSuperAdmin } = useAuth();
 
-  const visibleItems = items.filter((item) => canAccessItem(item, roles));
+  const visibleItems = items.filter((item) =>
+    canAccessItem(item, roles, hasAnyPermission, hasPermission),
+  );
   const platformItems = visibleItems.filter((item) => item.group === "platform");
-  const moduleItems = visibleItems.filter((item) => item.group === "module");
+  const moduleItems = visibleItems.filter(
+    (item) => item.group === "module" && !item.disabled,
+  );
   const supportItems = visibleItems.filter((item) => item.group === "support");
   const adminItems = visibleItems.filter((item) => item.group === "admin");
+  const subscriptionBlocked = isSubscriptionBlocked(blockedModuleItems);
 
   return (
     <aside className="hidden w-80 shrink-0 flex-col border-r bg-card lg:flex">
@@ -44,9 +75,9 @@ export function AppSidebar() {
           </div>
           <div className="mt-4 rounded-xl bg-white/10 p-3">
             <div className="flex items-center justify-between gap-3 text-xs">
-              <span className="text-primary-foreground/75">Workspace mode</span>
+              <span className="text-primary-foreground/75">Signed-in as</span>
               <Badge className="border-white/20 bg-white/15 text-primary-foreground" variant="outline">
-                {getRoleMode(roles)}
+                {getRoleMode(roles, permissions)}
               </Badge>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
@@ -56,21 +87,60 @@ export function AppSidebar() {
               />
             </div>
             <div className="mt-2 flex items-center gap-2 text-xs text-primary-foreground/80">
-              {minimumSetupComplete ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+              {isSuperAdmin ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+                  <span>Platform operations workspace</span>
+                </>
+              ) : minimumSetupComplete ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+                  <span>Minimum setup complete</span>
+                </>
               ) : (
-                <AlertCircle className="h-3.5 w-3.5 text-amber-300" />
+                <>
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-300" />
+                  <span>Company setup incomplete</span>
+                </>
               )}
-              <span>{minimumSetupComplete ? "Minimum setup complete" : "Setup attention required"}</span>
             </div>
+            {!isSuperAdmin && !minimumSetupComplete ? (
+              <Button
+                asChild
+                className="mt-3 h-8 w-full border-white/20 bg-white/10 text-xs text-primary-foreground hover:bg-white/20"
+                size="sm"
+                variant="outline"
+              >
+                <Link href={ROUTES.ADMIN_SETUP}>Continue company setup</Link>
+              </Button>
+            ) : null}
+            {!isSuperAdmin && subscriptionBlocked ? (
+              <Button
+                asChild
+                className="mt-2 h-8 w-full border-white/20 bg-white/10 text-xs text-primary-foreground hover:bg-white/20"
+                size="sm"
+                variant="outline"
+              >
+                <Link href={ROUTES.PLATFORM_SUBSCRIPTION}>Review billing status</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 
         <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <NavigationStatus isError={isError} isLoading={isLoading} />
-          <NavSection title="Primary navigation" items={platformItems} pathname={pathname} />
+          <NavSection title="Platform" items={platformItems} pathname={pathname} />
           {moduleItems.length > 0 && (
-            <NavSection title="Active business modules" items={moduleItems} pathname={pathname} />
+            <NavSection title="Business modules" items={moduleItems} pathname={pathname} />
+          )}
+          {!isSuperAdmin && blockedModuleItems.length > 0 && (
+            <NavSection
+              title="Restricted modules"
+              items={blockedModuleItems.filter((item) =>
+                canAccessItem(item, roles, hasAnyPermission, hasPermission),
+              )}
+              pathname={pathname}
+            />
           )}
           {supportItems.length > 0 && (
             <NavSection title="Support and audit" items={supportItems} pathname={pathname} />
@@ -104,7 +174,7 @@ function NavigationStatus({ isError, isLoading }: { isError: boolean; isLoading:
       <div className="rounded-xl border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading backend navigation rules
+          Loading navigation…
         </span>
       </div>
     );
@@ -113,7 +183,7 @@ function NavigationStatus({ isError, isLoading }: { isError: boolean; isLoading:
   if (isError) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-        Navigation API is unavailable. Showing shell-level routes only.
+        Navigation is temporarily unavailable. Platform routes remain available.
       </div>
     );
   }
@@ -172,6 +242,17 @@ function SidebarNavItem({
       <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
         {item.blockedReason ?? item.description}
       </div>
+      {item.disabled && item.actionHref && item.actionLabel ? (
+        <Button
+          asChild
+          className="mt-2 h-7 px-2 text-xs"
+          size="sm"
+          variant="outline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Link href={item.actionHref}>{item.actionLabel}</Link>
+        </Button>
+      ) : null}
     </>
   );
 

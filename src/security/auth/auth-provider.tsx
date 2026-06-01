@@ -12,11 +12,17 @@ import {
 import type Keycloak from "keycloak-js";
 import { isDevAuth } from "@/common/config/env";
 import {
+  isDevSessionSignedIn,
+  markDevSessionSignedIn,
+  markDevSessionSignedOut,
+} from "./dev-session";
+import {
   initKeycloak,
-  login,
-  logout,
+  loginWithKeycloak,
+  logoutWithKeycloak,
   refreshTokenIfNeeded,
 } from "./keycloak";
+import type { MeProfile } from "@/domain/models/me";
 
 type TokenClaims = Record<string, unknown> | undefined;
 
@@ -52,6 +58,7 @@ interface AuthContextValue extends CurrentUserContext {
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
+  applyMeProfile: (profile: MeProfile) => void;
 }
 
 const DEV_ROLES = [
@@ -65,10 +72,40 @@ const DEV_PERMISSIONS = [
   "SUPER_ADMIN_ACCESS",
   "SUPER_ADMIN_TENANT_READ",
   "SUPER_ADMIN_TENANT_WRITE",
-  "SUPER_ADMIN_MODULE_READ",
+  "SUPER_ADMIN_MODULE_MANAGE",
+  "PLAN_VIEW_INTERNAL",
+  "PLAN_CREATE",
+  "PLAN_UPDATE",
+  "PLAN_PUBLISH",
+  "PLAN_DEPRECATE",
+  "PLAN_PRICE_MANAGE",
+  "PLAN_LIMIT_MANAGE",
+  "PLAN_ENTITLEMENT_MANAGE",
+  "SUBSCRIPTION_VIEW",
+  "SUBSCRIPTION_CREATE",
+  "SUBSCRIPTION_ACTIVATE",
+  "SUBSCRIPTION_MANAGE",
+  "SUBSCRIPTION_CHANGE_PLAN",
+  "SUBSCRIPTION_CANCEL",
+  "SUBSCRIPTION_SUSPEND",
+  "SUBSCRIPTION_RESUME",
+  "SUBSCRIPTION_OVERRIDE",
+  "SUBSCRIPTION_VIEW_BILLING",
   "SUPER_ADMIN_SUBSCRIPTION_READ",
+  "SUPER_ADMIN_SUBSCRIPTION_MANAGE",
+  "SUPER_ADMIN_BILLING_MANAGE",
+  "SUPER_ADMIN_DANGEROUS_ACTION",
+  "SUPER_ADMIN_AUDIT_READ",
+  "SUPER_ADMIN_PROVISIONING_MANAGE",
   "TENANT_VIEW",
   "TENANT_CREATE",
+  "TENANT_UPDATE",
+  "USER_VIEW",
+  "USER_MANAGE",
+  "ROLE_VIEW",
+  "ROLE_MANAGE",
+  "EMPLOYEE_VIEW",
+  "EMPLOYEE_MANAGE",
   "EXPENSE_APPROVE",
 ];
 
@@ -133,13 +170,39 @@ function resolveDisplayName(claims: TokenClaims): string | undefined {
 
 function resolveMode(roles: string[], permissions: string[], tenantId: string | null): AuthMode {
   const access = new Set([...roles, ...permissions]);
-  if (access.has("SUPER_ADMIN_ACCESS")) return "super-admin";
+  if (
+    access.has("SUPER_ADMIN_ACCESS") ||
+    roles.includes("PLATFORM_SUPER_ADMIN") ||
+    permissions.includes("PLATFORM_SUPER_ADMIN")
+  ) {
+    return "super-admin";
+  }
   if ([...access].some((item) => item.includes("ADMIN"))) return "tenant-admin";
   if (tenantId) return "tenant-user";
   return "anonymous";
 }
 
-function buildCurrentUser(keycloak: Keycloak | null): CurrentUserContext {
+function buildCurrentUser(
+  keycloak: Keycloak | null,
+  devSignedIn: boolean,
+  serverProfile: MeProfile | null,
+): CurrentUserContext {
+  if (isDevAuth() && !devSignedIn) {
+    return {
+      id: undefined,
+      email: undefined,
+      displayName: undefined,
+      tenantId: null,
+      companyId: null,
+      roles: [],
+      permissions: [],
+      mode: "anonymous",
+      isSuperAdmin: false,
+      isTenantAdmin: false,
+      isTenantUser: false,
+    };
+  }
+
   const claims = isDevAuth()
     ? {
         sub: "dev-user-id",
@@ -151,20 +214,33 @@ function buildCurrentUser(keycloak: Keycloak | null): CurrentUserContext {
       }
     : (keycloak?.tokenParsed as TokenClaims);
 
-  const roles = extractRoles(keycloak, claims);
-  const permissions = extractPermissions(claims, roles);
-  const tenantId = claimString(claims, "tenant_id", "tenantId") ?? null;
-  const companyId = claimString(claims, "company_id", "companyId") ?? null;
-  const mode = resolveMode(roles, permissions, tenantId);
+  const tenantId =
+    serverProfile?.tenantId ??
+    claimString(claims, "tenant_id", "tenantId") ??
+    null;
+  const companyId =
+    serverProfile?.companyId ??
+    claimString(claims, "company_id", "companyId") ??
+    null;
+
+  const mergedRoles = serverProfile?.roles?.length
+    ? serverProfile.roles
+    : extractRoles(keycloak, claims);
+  const mergedPermissions = serverProfile?.permissions?.length
+    ? serverProfile.permissions
+    : extractPermissions(claims, mergedRoles);
+  const mode = resolveMode(mergedRoles, mergedPermissions, tenantId);
 
   return {
-    id: isDevAuth() ? "dev-user-id" : keycloak?.subject ?? claimString(claims, "sub"),
+    id: isDevAuth()
+      ? "dev-user-id"
+      : serverProfile?.userId ?? keycloak?.subject ?? claimString(claims, "sub"),
     email: claimString(claims, "email"),
     displayName: resolveDisplayName(claims),
     tenantId,
     companyId,
-    roles,
-    permissions,
+    roles: mergedRoles,
+    permissions: mergedPermissions,
     mode,
     isSuperAdmin: mode === "super-admin",
     isTenantAdmin: mode === "tenant-admin",
@@ -174,8 +250,12 @@ function buildCurrentUser(keycloak: Keycloak | null): CurrentUserContext {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [keycloak, setKeycloak] = useState<Keycloak | null>(null);
+  const [devSignedIn, setDevSignedIn] = useState(() =>
+    isDevAuth() ? isDevSessionSignedIn() : false,
+  );
   const [isLoading, setIsLoading] = useState(() => !isDevAuth());
   const [authError, setAuthError] = useState<string | null>(null);
+  const [serverProfile, setServerProfile] = useState<MeProfile | null>(null);
 
   useEffect(() => {
     if (isDevAuth()) return;
@@ -213,8 +293,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [keycloak]);
 
-  const currentUser = useMemo(() => buildCurrentUser(keycloak), [keycloak]);
-  const isAuthenticated = isDevAuth() || Boolean(keycloak?.authenticated);
+  const currentUser = useMemo(
+    () => buildCurrentUser(keycloak, devSignedIn, serverProfile),
+    [keycloak, devSignedIn, serverProfile],
+  );
+  const isAuthenticated = isDevAuth()
+    ? devSignedIn
+    : Boolean(keycloak?.authenticated);
+
+  const handleLogin = useCallback(async () => {
+    if (isDevAuth()) {
+      markDevSessionSignedIn();
+      setDevSignedIn(true);
+      return;
+    }
+    await loginWithKeycloak();
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    if (isDevAuth()) {
+      markDevSessionSignedOut();
+      setDevSignedIn(false);
+      return;
+    }
+    logoutWithKeycloak();
+  }, []);
 
   const hasRole = useCallback(
     (role: string) => currentUser.roles.includes(role),
@@ -245,17 +348,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [currentUser.permissions],
   );
 
+  const applyMeProfile = useCallback((profile: MeProfile) => {
+    setServerProfile(profile);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       keycloak,
       isAuthenticated,
       isLoading,
       authError,
-      token: isDevAuth() ? "dev-token" : keycloak?.token,
+      token: isDevAuth()
+        ? devSignedIn
+          ? "dev-token"
+          : undefined
+        : keycloak?.token,
       currentUser,
       ...currentUser,
-      login,
-      logout,
+      login: handleLogin,
+      logout: handleLogout,
       refreshToken: refreshTokenIfNeeded,
       hasRole,
       hasAnyRole,
@@ -263,19 +374,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
+      applyMeProfile,
     }),
     [
       keycloak,
       isAuthenticated,
       isLoading,
       authError,
+      devSignedIn,
       currentUser,
+      handleLogin,
+      handleLogout,
       hasRole,
       hasAnyRole,
       hasAllRoles,
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
+      applyMeProfile,
     ],
   );
 
@@ -324,6 +440,9 @@ export function useHasPermissions(
 
 export function useRequireAuth() {
   const auth = useAuth();
-  const handleLogin = useCallback(() => login(), []);
-  return { ...auth, login: handleLogin };
+  return auth;
+}
+
+export function useApplyMeProfile() {
+  return useAuth().applyMeProfile;
 }

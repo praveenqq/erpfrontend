@@ -3,7 +3,7 @@ import { z } from "zod";
 export const expenseLineItemSchema = z.object({
   category: z.string().min(1),
   description: z.string().min(1),
-  amount: z.coerce.number().positive(),
+  amount: z.number().positive(),
   expenseDate: z.string().min(1),
 });
 

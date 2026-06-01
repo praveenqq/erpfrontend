@@ -35,4 +35,25 @@ export const expenseRemoteDataSource = {
     );
     return parseExpense(extractApiData(response));
   },
+
+  async getById(id: string, tenantId: string | null): Promise<Expense> {
+    const response = await apiFetch<unknown>(API_ENDPOINTS.MODULES.EXPENSE(id), { tenantId });
+    return parseExpense(extractApiData(response));
+  },
+
+  async approve(id: string, tenantId: string | null): Promise<Expense> {
+    const response = await apiFetch<unknown>(API_ENDPOINTS.MODULES.EXPENSE_APPROVE(id), {
+      method: "POST",
+      tenantId,
+    });
+    return parseExpense(extractApiData(response));
+  },
+
+  async reject(id: string, tenantId: string | null): Promise<Expense> {
+    const response = await apiFetch<unknown>(API_ENDPOINTS.MODULES.EXPENSE_REJECT(id), {
+      method: "POST",
+      tenantId,
+    });
+    return parseExpense(extractApiData(response));
+  },
 };

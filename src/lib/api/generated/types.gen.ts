@@ -22,6 +22,9 @@ export type NavigationItem = {
     path?: string;
     icon?: string;
     enabled?: boolean;
+    blockedReason?: string;
+    reasonMessage?: string;
+    entitlementStatus?: string;
 };
 
 export type ApiResponseMeModules = {

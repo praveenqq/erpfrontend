@@ -3,21 +3,14 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Badge } from "@/common/components/ui/badge";
-import type { Tenant } from "@/domain/models/tenant";
-
-function statusVariant(status: string) {
-  switch (status) {
-    case "ACTIVE":
-      return "success" as const;
-    case "SUSPENDED":
-      return "warning" as const;
-    case "CANCELLED":
-    case "ARCHIVED":
-      return "destructive" as const;
-    default:
-      return "secondary" as const;
-  }
-}
+import { ROUTES } from "@/common/navigation/routes";
+import {
+  formatTenantStatus,
+  formatTenantTimestamp,
+  tenantStatusVariant,
+  type Tenant,
+} from "@/domain/models/tenant";
+import { formatTenantTypeLabel } from "@/common/copy/workspace-labels";
 
 export const tenantColumns: ColumnDef<Tenant>[] = [
   {
@@ -26,8 +19,8 @@ export const tenantColumns: ColumnDef<Tenant>[] = [
     cell: ({ row }) => (
       <div>
         <Link
-          href={`/platform/tenants/${row.original.id}`}
           className="font-medium hover:underline"
+          href={ROUTES.PLATFORM_TENANT_DETAIL(row.original.id)}
         >
           {row.original.displayName}
         </Link>
@@ -39,21 +32,34 @@ export const tenantColumns: ColumnDef<Tenant>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
-      <Badge variant={statusVariant(row.original.status)}>
-        {row.original.status}
+      <Badge variant={tenantStatusVariant(row.original.status)}>
+        {formatTenantStatus(row.original.status)}
       </Badge>
     ),
   },
   {
+    accessorKey: "setupStatus",
+    header: "Setup",
+    cell: ({ row }) =>
+      row.original.setupStatus ? (
+        <Badge variant="secondary">{formatTenantStatus(row.original.setupStatus)}</Badge>
+      ) : (
+        "—"
+      ),
+  },
+  {
+    accessorKey: "type",
+    header: "Organization type",
+    cell: ({ row }) => formatTenantTypeLabel(row.original.type),
+  },
+  {
     accessorKey: "primaryContactEmail",
     header: "Contact",
+    cell: ({ row }) => row.original.primaryContactEmail ?? "—",
   },
   {
     accessorKey: "createdAt",
     header: "Created",
-    cell: ({ row }) =>
-      row.original.createdAt
-        ? new Date(row.original.createdAt).toLocaleDateString()
-        : "—",
+    cell: ({ row }) => formatTenantTimestamp(row.original.createdAt),
   },
 ];

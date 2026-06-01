@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Loader2 } from "lucide-react";
+import { AuditLink } from "@/common/components/audit/audit-link";
 import { DataTable } from "@/common/components/data-table/data-table";
 import { Badge } from "@/common/components/ui/badge";
 import {
@@ -11,14 +14,25 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { ROUTES } from "@/common/navigation/routes";
+import { CreateExpenseForm } from "@/modules/expenses/components/create-expense-form";
 import {
   useExpenses,
   useSubmitExpense,
   type Expense,
 } from "@/modules/expenses/api/expense-queries";
+import { RoleGuard } from "@/security/guards/role-guard";
 
 const columns: ColumnDef<Expense>[] = [
-  { accessorKey: "title", header: "Title" },
+  {
+    accessorKey: "title",
+    header: "Title",
+    cell: ({ row }) => (
+      <Link className="font-medium text-primary hover:underline" href={ROUTES.MODULE_EXPENSE_DETAIL(row.original.id)}>
+        {row.original.title}
+      </Link>
+    ),
+  },
   { accessorKey: "currency", header: "Currency" },
   {
     accessorKey: "status",
@@ -55,27 +69,48 @@ function SubmitButton({ expenseId, status }: { expenseId: string; status: string
 }
 
 export function ExpensesPage() {
-  const { data: expenses, isLoading, error } = useExpenses();
+  const { data: expenses, isLoading, error, refetch } = useExpenses();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Claims</CardTitle>
-        <CardDescription>Review and submit expense reports.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading && <p className="text-muted-foreground">Loading…</p>}
-        {error && (
-          <p className="text-destructive">
-            {error instanceof Error ? error.message : "Failed to load expenses"}
-          </p>
-        )}
-        <DataTable
-          columns={columns}
-          data={expenses ?? []}
-          emptyMessage="No expense claims yet."
-        />
-      </CardContent>
-    </Card>
+    <RoleGuard match="any" permissions={["EXPENSE_APPROVE", "SUPER_ADMIN_ACCESS"]}>
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <AuditLink tenantScoped label="View audit trail" variant="button" />
+        </div>
+
+        <CreateExpenseForm />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Claims</CardTitle>
+            <CardDescription>Review, submit, and track expense workflow status.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex min-h-[120px] items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              </div>
+            ) : null}
+            {error ? (
+              <div className="space-y-3">
+                <p className="text-destructive">
+                  {error instanceof Error ? error.message : "Failed to load expenses"}
+                </p>
+                <Button onClick={() => refetch()} type="button" variant="outline">
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+            {!isLoading && !error ? (
+              <DataTable
+                columns={columns}
+                data={expenses ?? []}
+                emptyMessage="No expense claims yet. Create a draft claim above."
+              />
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    </RoleGuard>
   );
 }

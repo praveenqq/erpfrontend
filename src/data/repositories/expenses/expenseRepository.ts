@@ -4,4 +4,7 @@ export const expenseRepository = {
   listExpenses: expenseRemoteDataSource.list,
   createExpense: expenseRemoteDataSource.create,
   submitExpense: expenseRemoteDataSource.submit,
+  getExpense: expenseRemoteDataSource.getById,
+  approveExpense: expenseRemoteDataSource.approve,
+  rejectExpense: expenseRemoteDataSource.reject,
 };

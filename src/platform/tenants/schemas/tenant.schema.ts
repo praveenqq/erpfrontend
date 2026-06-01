@@ -18,3 +18,10 @@ export const createTenantSchema = z.object({
 });
 
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
+
+export const updateTenantStatusSchema = z.object({
+  status: z.enum(["PENDING", "PROVISIONING", "ACTIVE", "SUSPENDED", "CANCELLED", "ARCHIVED"]),
+  reason: z.string().min(3, "Reason is required"),
+});
+
+export type UpdateTenantStatusInput = z.infer<typeof updateTenantStatusSchema>;

@@ -50,9 +50,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return { tenantId: subdomainTenant, tenantSource: "subdomain" as const };
     }
 
-    if (isDevAuth()) {
+    if (isDevAuth() && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
       return {
-        tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "dev-tenant",
+        tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID,
         tenantSource: "development" as const,
       };
     }

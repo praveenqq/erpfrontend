@@ -29,12 +29,17 @@ export interface WorkspaceNavigationItem {
   description: string;
   icon?: LucideIcon;
   role?: string;
+  permissions?: string[];
   moduleCode?: string;
   group: WorkspaceNavigationGroup;
   priority?: number;
   disabled?: boolean;
   statusLabel?: string;
   blockedReason?: string;
+  blockedReasonCode?: string;
+  actionLabel?: string;
+  actionHref?: string;
+  entitlementStatus?: string;
   source?: "platform" | "backend";
 }
 
@@ -48,28 +53,44 @@ export interface ModulePageConfig {
   supportText?: string;
 }
 
+export interface PlatformHealthSnapshot {
+  activeTenants: number;
+  suspendedTenants: number;
+  trialingSubscriptions: number;
+  pastDueSubscriptions: number;
+  failedProvisioningJobs: number;
+  pendingOutboxEvents: number;
+  failedWebhooks: number;
+}
+
+export interface TenantCountsSnapshot {
+  total: number;
+  active: number;
+  suspended: number;
+  pending: number;
+  cancelled: number;
+}
+
+export interface SubscriptionCountsSnapshot {
+  active: number;
+  trialing: number;
+  pastDue: number;
+  expired: number;
+  cancelled: number;
+}
+
+export interface RecentPlatformAction {
+  id: string;
+  actorUserId: string;
+  actionType: string;
+  targetTenantId?: string | null;
+  createdAt: string;
+}
+
 export interface PlatformDashboardSnapshot {
-  health?: { status?: string; message?: string };
-  tenants?: {
-    total: number;
-    active: number;
-    suspended: number;
-    pending: number;
-    cancelled: number;
-  };
-  subscriptions?: {
-    active: number;
-    trialing: number;
-    pastDue: number;
-    expired: number;
-    cancelled: number;
-  };
-  moduleAdoption?: Record<string, number>;
-  recentActions?: Array<{
-    id: string;
-    actorUserId: string;
-    actionType: string;
-    targetTenantId?: string;
-    createdAt: string;
-  }>;
+  health: PlatformHealthSnapshot;
+  tenants: TenantCountsSnapshot;
+  subscriptions: SubscriptionCountsSnapshot;
+  moduleAdoption: Record<string, number>;
+  recentActions: RecentPlatformAction[];
 }

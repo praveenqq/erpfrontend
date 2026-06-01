@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { GENEX_BRAND } from "@/common/brand/constants";
+import { isDevAuth } from "@/common/config/env";
 import { useAuth } from "@/security/auth/auth-provider";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -69,16 +70,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
             <CardTitle>Sign in required</CardTitle>
             <CardDescription>
-              Sign in with Keycloak to access {GENEX_BRAND.name} and load your role,
-              permissions, tenant context, and available modules.
+              {isDevAuth()
+                ? `Start a local development session to access ${GENEX_BRAND.name} with your configured dev user, roles, and tenant context.`
+                : `Sign in with Keycloak to access ${GENEX_BRAND.name} and load your role, permissions, tenant context, and available modules.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button className="w-full" onClick={() => login()}>
-              Sign in securely
+              {isDevAuth() ? "Continue with dev session" : "Sign in securely"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              The frontend uses the authenticated access token for all protected backend requests and keeps tenant context aligned with token claims.
+              {isDevAuth()
+                ? "Development mode keeps sign-in local. Use sign out from the user menu to end the session and return here."
+                : "The frontend uses the authenticated access token for all protected backend requests and keeps tenant context aligned with token claims."}
             </p>
           </CardContent>
         </Card>

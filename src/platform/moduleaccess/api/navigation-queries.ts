@@ -15,5 +15,7 @@ export function useNavigation() {
     queryFn: (): Promise<NavigationSnapshot> =>
       navigationRepository.getNavigation(tenantId),
     enabled: Boolean(tenantId),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
   });
 }

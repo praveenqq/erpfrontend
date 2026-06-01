@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { configureGeneratedClient } from "@/lib/api/configure-client";
 import { createQueryClient } from "@/lib/query/query-client";
 import { AuthProvider } from "@/security/auth/auth-provider";
+import { MeProfileSync } from "@/security/auth/me-profile-sync";
 import { TenantProvider, useTenant } from "@/tenancy/context/tenant-context";
 
 function ApiClientBootstrap({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <TenantProvider>
             <ApiClientBootstrap>
+              <MeProfileSync />
               {children}
               <Toaster richColors position="top-right" />
             </ApiClientBootstrap>

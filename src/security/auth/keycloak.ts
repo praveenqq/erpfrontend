@@ -34,8 +34,7 @@ export async function initKeycloak(): Promise<Keycloak | null> {
   return keycloak;
 }
 
-export function login(): Promise<void> {
-  if (isDevAuth()) return Promise.resolve();
+export function loginWithKeycloak(): Promise<void> {
   return getKeycloak().login({ redirectUri: window.location.href });
 }
 
@@ -55,10 +54,6 @@ export async function refreshTokenIfNeeded(minValiditySec = 30): Promise<void> {
   }
 }
 
-export function logout(): void {
-  if (isDevAuth()) {
-    window.location.reload();
-    return;
-  }
+export function logoutWithKeycloak(): void {
   getKeycloak().logout({ redirectUri: window.location.origin });
 }

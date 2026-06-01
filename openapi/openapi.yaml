@@ -162,6 +162,9 @@ components:
         path: { type: string }
         icon: { type: string }
         enabled: { type: boolean }
+        blockedReason: { type: string, nullable: true }
+        reasonMessage: { type: string, nullable: true }
+        entitlementStatus: { type: string, nullable: true }
     ApiResponseMeModules:
       type: object
       required: [success, data]

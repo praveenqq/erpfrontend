@@ -15,6 +15,14 @@ export interface TenantStatusChartProps {
 }
 
 export function TenantStatusChart({ data }: TenantStatusChartProps) {
+  if (data.every((item) => item.value === 0)) {
+    return (
+      <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
+        No tenant records are available yet.
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data}>

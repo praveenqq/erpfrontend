@@ -29,16 +29,30 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function canAccessItem(item: WorkspaceNavigationItem, roles: string[]): boolean {
-  return !item.role || roles.includes(item.role);
+function canAccessItem(
+  item: WorkspaceNavigationItem,
+  roles: string[],
+  hasAnyPermission: (permissions: string[]) => boolean,
+  hasPermission: (permission: string) => boolean,
+): boolean {
+  if (item.permissions?.length) {
+    return hasAnyPermission(item.permissions);
+  }
+  if (item.role) {
+    return roles.includes(item.role) || hasPermission(item.role);
+  }
+  return true;
 }
 
 function MobileNavigation() {
   const pathname = usePathname();
-  const { roles } = useAuth();
+  const { roles, hasAnyPermission, hasPermission } = useAuth();
   const { items } = useWorkspaceNavigation();
   const mobileItems = items
-    .filter((item) => canAccessItem(item, roles) && !item.disabled)
+    .filter(
+      (item) =>
+        canAccessItem(item, roles, hasAnyPermission, hasPermission) && !item.disabled,
+    )
     .filter((item) => item.group === "platform" || item.group === "module")
     .slice(0, 5);
 
